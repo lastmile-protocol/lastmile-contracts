@@ -41,7 +41,7 @@ stellar contract invoke --id "$V" --source deployer $N --send=no -- \
 
 stellar contract invoke --id "$V" --source deployer $N -- top_up --payer "$PAYER" --amount 100000000 >/dev/null 2>&1 || true
 EXP=$(( $(date +%s) + 86400 ))
-AUTH="{\"payer\":\"$PAYER\",\"payee\":\"$PAYEE\",\"amount\":\"25000000\",\"nonce\":\"${NONCE}\",\"expires\":$EXP}"
+AUTH="{\"payer\":\"$PAYER\",\"payee\":\"$PAYEE\",\"amount\":\"25000000\",\"nonce\":${NONCE},\"expires\":$EXP}"
 
 say "the offline step: signing 2.5 XLM to the payee"
 PAYLOAD=$(stellar contract invoke --id "$V" --source deployer $N --send=no -- \
@@ -50,7 +50,7 @@ echo "payload $PAYLOAD"
 SIG=$(node -e '
 const {Keypair} = require("@stellar/stellar-sdk");
 const kp = Keypair.fromSecret(process.argv[1]);
-process.stdout.write(kp.sign(Buffer.from(process.argv[2],"hex")).toString("hex"));
+process.stdout.write(Buffer.from(kp.sign(Buffer.from(process.argv[2],"hex"))).toString("hex"));
 ' "$DEVS" "$PAYLOAD")
 echo "signature $SIG"
 

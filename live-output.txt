@@ -1,8 +1,8 @@
 
 === setting up three parties
 payer  GDHY33WC627BSZJGU3G6CHXTERUCFDZ72THUPCQWIXQTS56X7T2ZERCV
-payee  GB6Y3VUXSLNQEXNWE7FL56CCXN5ILERTJRY6AQCPUTUP5JFDHO5MPE5X
-device 0ee8a37cde411b1923e3e99bf9d3c6cd945920bc9a4fc06e60114d9b813e7916
+payee  GDYZMJ74MTP5EIGDLFZCLVH5NLEVCLGE5NOC5YE2WFK7PD5NJE6KPFZB
+device 6629677599ed74dfe1a9e58487239587c4c6b309f121ea4e886e327c3bf14788
 
 === opening a vault: 10 XLM of float, 5 XLM of bond
 ❌ error: transaction simulation failed: HostError: Error(Contract, #2)
@@ -12,37 +12,42 @@ Event log (newest first):
    1: [Diagnostic Event] contract:CB5ZYVSQY2XF3BSCD4KMCQY2IJI23LQMTNBT3DO7Q4RKUDGTWDORWVPS, topics:[error, Error(Contract, #2)], data:["failing with contract error", 2]
    2: [Diagnostic Event] topics:[fn_call, CB5ZYVSQY2XF3BSCD4KMCQY2IJI23LQMTNBT3DO7Q4RKUDGTWDORWVPS, open], data:[GDHY33WC627BSZJGU3G6CHXTERUCFDZ72THUPCQWIXQTS56X7T2ZERCV, CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC, 100000000, 50000000]
 
-{"bond":"50000000","float":"100000000","token":"CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"}
+{"bond":"50000000","float":"200000000","token":"CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"}
 
 === registering the device key
 ℹ️  Simulating transaction…
-ℹ️  Signing transaction: 9043aaaa64b929a185c99fca49075eefe44fb9fc417893a6a2294826a56bdc96
+ℹ️  Signing transaction: 0fc9437d15d2e3527e7ca07dadab445c265f0ef3c6db6b7c995cccb16865ab63
 🌎 Sending transaction…
 ✅ Transaction submitted successfully!
-🔗 https://stellar.expert/explorer/testnet/tx/9043aaaa64b929a185c99fca49075eefe44fb9fc417893a6a2294826a56bdc96
+🔗 https://stellar.expert/explorer/testnet/tx/0fc9437d15d2e3527e7ca07dadab445c265f0ef3c6db6b7c995cccb16865ab63
 true
 
 === the offline step: signing 2.5 XLM to the payee
-❌ error: Failed to parse argument 'auth': unknown variant `11480`, expected one of `bool`, `void`, `error`, `u32`, `i32`, `u64`, `i64`, `timepoint`, `duration`, `u128`, `i128`, `u256`, `i256`, `bytes`, `string`, `symbol`, `vec`, `map`, `address`, `contract_instance`, `ledger_key_contract_instance`, `ledger_key_nonce`, `executable_tag`
-
-Context: Expected type user-defined type 'Authorization', but received: '{"payer":"GDHY33WC627BSZJGU3G6CHXTERUCFDZ72THUPCQWIXQTS56X7T2ZERCV","payee":"GB6Y3VUXSLNQEXNWE7FL56CCXN5ILERTJRY6AQCPUTUP5JFDHO5MPE5X","amount":"25000000","nonce":"11480","expires":1789393424}'
-
-Suggestion: Check the contract specification for the correct argument format and type
-payload 
-signature 218,137,224,238,132,147,211,250,120,203,173,236,197,158,211,180,35,210,92,90,222,46,48,140,173,59,30,10,132,226,169,9,112,22,3,102,121,175,102,58,113,223,191,30,100,56,145,0,93,217,9,207,133,84,86,176,41,213,220,227,120,144,229,9
+payload 1698e2d8257a1620ab958e8fc5d1c3b36c84577094c6398840731f43f9e85e4a
+signature d54b1b11830e02d9ed4c4e2f371f2744f9fce425afc6df2fe3b79ce3f0a780c05d36ebdd0f2c7abe517d0006436d7b3868e41a47f4ace0d48d73fe750c7e8b01
 
 === balances before
 payee 100000000000
 
 === redeeming — submitted by the payer, but the signature is the authority
-❌ error: Failed to parse argument 'auth': unknown variant `11480`, expected one of `bool`, `void`, `error`, `u32`, `i32`, `u64`, `i64`, `timepoint`, `duration`, `u128`, `i128`, `u256`, `i256`, `bytes`, `string`, `symbol`, `vec`, `map`, `address`, `contract_instance`, `ledger_key_contract_instance`, `ledger_key_nonce`, `executable_tag`
-
-Context: Expected type user-defined type 'Authorization', but received: '{"payer":"GDHY33WC627BSZJGU3G6CHXTERUCFDZ72THUPCQWIXQTS56X7T2ZERCV","payee":"GB6Y3VUXSLNQEXNWE7FL56CCXN5ILERTJRY6AQCPUTUP5JFDHO5MPE5X","amount":"25000000","nonce":"11480","expires":1789393424}'
-
-Suggestion: Check the contract specification for the correct argument format and type
+ℹ️  Simulating transaction…
+ℹ️  Signing transaction: beb7ea543dce368fb3212cce67de60fa65d6b2d7948c89fd902511410b17b94b
+🌎 Sending transaction…
+✅ Transaction submitted successfully!
+🔗 https://stellar.expert/explorer/testnet/tx/beb7ea543dce368fb3212cce67de60fa65d6b2d7948c89fd902511410b17b94b
+📅 CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC - Success - Event: [{"symbol":"transfer"},{"address":"CB5ZYVSQY2XF3BSCD4KMCQY2IJI23LQMTNBT3DO7Q4RKUDGTWDORWVPS"},{"address":"GDYZMJ74MTP5EIGDLFZCLVH5NLEVCLGE5NOC5YE2WFK7PD5NJE6KPFZB"},{"string":"native"}] = {"i128":"25000000"}
 
 === balances after
-payee 100000000000
-delta 0 stroops (expected 25000000)
-PAYEE NOT PAID CORRECTLY
-exit=1
+payee 100025000000
+delta 25000000 stroops (expected 25000000)
+
+=== the nonce is burnt and the float has fallen
+true
+{"bond":"50000000","float":"275000000","token":"CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"}
+
+=== replaying the same voucher must fail
+refused, as it must be
+
+=== ALL LIVE CHECKS PASSED
+contract https://stellar.expert/explorer/testnet/contract/CB5ZYVSQY2XF3BSCD4KMCQY2IJI23LQMTNBT3DO7Q4RKUDGTWDORWVPS
+exit=0
