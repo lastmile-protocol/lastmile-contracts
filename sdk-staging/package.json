@@ -1,0 +1,17 @@
+{
+  "name": "@lastmile/sdk",
+  "version": "0.1.0",
+  "description": "Sign a Stellar payment with no connectivity; redeem it when signal returns.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "files": ["src"],
+  "license": "Apache-2.0",
+  "repository": "github:lastmile-protocol/lastmile-sdk",
+  "scripts": {
+    "test": "node test/roundtrip.mjs"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^17.0.1"
+  }
+}
