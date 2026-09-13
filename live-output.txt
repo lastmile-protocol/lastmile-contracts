@@ -1,0 +1,15 @@
+
+=== setting up three parties
+payer  GDHY33WC627BSZJGU3G6CHXTERUCFDZ72THUPCQWIXQTS56X7T2ZERCV
+payee  GDIRTEXNN7CODH5KBPCGM7WOKGJY56OGDWZVPQMPMEBA63PYIXMLAHKF
+device 4579ccd8380cedc5dbea645a1bf4f815ceee295469a93beba92337186b7df4dd
+
+=== opening a vault: 10 XLM of float, 5 XLM of bond
+❌ error: transaction simulation failed: HostError: Error(Contract, #2)
+
+Event log (newest first):
+   0: [Diagnostic Event] contract:CB5ZYVSQY2XF3BSCD4KMCQY2IJI23LQMTNBT3DO7Q4RKUDGTWDORWVPS, topics:[error, Error(Contract, #2)], data:"escalating error to VM trap from failed host function call: fail_with_error"
+   1: [Diagnostic Event] contract:CB5ZYVSQY2XF3BSCD4KMCQY2IJI23LQMTNBT3DO7Q4RKUDGTWDORWVPS, topics:[error, Error(Contract, #2)], data:["failing with contract error", 2]
+   2: [Diagnostic Event] topics:[fn_call, CB5ZYVSQY2XF3BSCD4KMCQY2IJI23LQMTNBT3DO7Q4RKUDGTWDORWVPS, open], data:[GDHY33WC627BSZJGU3G6CHXTERUCFDZ72THUPCQWIXQTS56X7T2ZERCV, CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC, 100000000, 50000000]
+
+exit=1
