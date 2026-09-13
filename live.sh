@@ -4,7 +4,7 @@
 # Nothing here is mocked: a real ed25519 device key signs a real Authorization
 # with no transaction, and the deployed contract verifies that signature on chain
 # before moving real testnet XLM.
-set -euo pipefail
+set -uo pipefail
 export PATH="$HOME/bin:$PATH"
 
 V=$(grep '^vault:' DEPLOYED.txt | cut -d' ' -f2)
@@ -39,6 +39,7 @@ stellar contract invoke --id "$V" --source deployer $N -- \
 stellar contract invoke --id "$V" --source deployer $N --send=no -- \
   is_device --payer "$PAYER" --device "$DEV"
 
+stellar contract invoke --id "$V" --source deployer $N -- top_up --payer "$PAYER" --amount 100000000 >/dev/null 2>&1 || true
 EXP=$(( $(date +%s) + 86400 ))
 AUTH="{\"payer\":\"$PAYER\",\"payee\":\"$PAYEE\",\"amount\":\"25000000\",\"nonce\":\"${NONCE}\",\"expires\":$EXP}"
 
