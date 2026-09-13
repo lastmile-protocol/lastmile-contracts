@@ -1,0 +1,18 @@
+[package]
+name = "lastmile-vault"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Offline-authorised payments on Stellar: sign with no connectivity, redeem when signal returns."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = "23"
+
+[dev-dependencies]
+soroban-sdk = { version = "23", features = ["testutils"] }
+ed25519-dalek = { version = "2", default-features = false }
