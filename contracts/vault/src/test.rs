@@ -92,8 +92,16 @@ fn a_voucher_signed_offline_pays_out_when_it_reaches_the_network() {
     // Later, somewhere with signal.
     f.vault.redeem(&a, &pubkey(&f.env, &dev), &sig);
 
-    assert_eq!(f.token.balance(&payee), 2_500, "the payee should be paid in full");
-    assert_eq!(f.vault.vault_of(&payer).float, 7_500, "float should fall by exactly the amount");
+    assert_eq!(
+        f.token.balance(&payee),
+        2_500,
+        "the payee should be paid in full"
+    );
+    assert_eq!(
+        f.vault.vault_of(&payer).float,
+        7_500,
+        "float should fall by exactly the amount"
+    );
     assert!(f.vault.is_spent(&payer, &1), "the nonce should be burnt");
 }
 
@@ -126,7 +134,11 @@ fn a_payee_can_spend_their_whole_float_across_many_vouchers() {
         f.vault.redeem(&a, &pk, &sig);
         assert_eq!(f.token.balance(&payee), 1_000);
     }
-    assert_eq!(f.vault.vault_of(&payer).float, 0, "the float should be exactly exhausted");
+    assert_eq!(
+        f.vault.vault_of(&payer).float,
+        0,
+        "the float should be exactly exhausted"
+    );
 }
 
 // ------------------------------------------------------------------ refusals
@@ -165,7 +177,9 @@ fn an_expired_voucher_is_refused() {
     let a = auth(&f, &payer, &payee, 1_000, 1);
     let sig = sign(&f.env, &dev, &f.vault.signing_payload(&a));
 
-    f.env.ledger().set_timestamp(f.env.ledger().timestamp() + 8 * DAY);
+    f.env
+        .ledger()
+        .set_timestamp(f.env.ledger().timestamp() + 8 * DAY);
     f.vault.redeem(&a, &pubkey(&f.env, &dev), &sig);
 }
 
@@ -210,7 +224,10 @@ fn a_tampered_amount_breaks_the_signature() {
 
     // A payee who inflates the amount after the fact holds a signature over the
     // old payload. This is why the amount is inside the signed object.
-    let greedy = Authorization { amount: 9_000, ..honest };
+    let greedy = Authorization {
+        amount: 9_000,
+        ..honest
+    };
     f.vault.redeem(&greedy, &pubkey(&f.env, &dev), &sig);
 }
 
@@ -257,7 +274,11 @@ fn double_signing_one_nonce_slashes_the_bond_to_whoever_proves_it() {
     f.vault
         .report_double_sign(&pk, &a, &sig_a, &b, &sig_b, &second);
 
-    assert_eq!(f.token.balance(&second), 2_000, "the bond should go to the reporter");
+    assert_eq!(
+        f.token.balance(&second),
+        2_000,
+        "the bond should go to the reporter"
+    );
     assert_eq!(f.vault.vault_of(&payer).bond, 0, "the bond should be spent");
     assert!(
         !f.vault.is_device(&payer, &pk),
@@ -295,8 +316,7 @@ fn submitting_the_same_voucher_twice_is_not_a_double_sign() {
     let sig = sign(&f.env, &dev, &f.vault.signing_payload(&a));
 
     // An identical pair proves nothing and must not be a way to grab a bond.
-    f.vault
-        .report_double_sign(&pk, &a, &sig, &a, &sig, &payee);
+    f.vault.report_double_sign(&pk, &a, &sig, &a, &sig, &payee);
 }
 
 #[test]
@@ -325,7 +345,11 @@ fn the_contract_never_holds_more_or_less_than_it_owes() {
     let pk = pubkey(&f.env, &dev);
     let id = f.vault.address.clone();
 
-    assert_eq!(f.token.balance(&id), 6_000, "float plus bond, and nothing else");
+    assert_eq!(
+        f.token.balance(&id),
+        6_000,
+        "float plus bond, and nothing else"
+    );
 
     let payee = Address::generate(&f.env);
     let a = auth(&f, &payer, &payee, 2_000, 1);
@@ -340,8 +364,16 @@ fn the_contract_never_holds_more_or_less_than_it_owes() {
     );
 
     f.vault.close(&payer);
-    assert_eq!(f.token.balance(&id), 0, "closing should leave nothing behind");
-    assert_eq!(f.token.balance(&payee), 2_000, "and the payee keeps what they were paid");
+    assert_eq!(
+        f.token.balance(&id),
+        0,
+        "closing should leave nothing behind"
+    );
+    assert_eq!(
+        f.token.balance(&payee),
+        2_000,
+        "and the payee keeps what they were paid"
+    );
 }
 
 #[test]
@@ -351,11 +383,19 @@ fn top_up_and_withdraw_move_only_the_float() {
 
     f.vault.top_up(&payer, &2_000);
     assert_eq!(f.vault.vault_of(&payer).float, 3_000);
-    assert_eq!(f.vault.vault_of(&payer).bond, 500, "top-up must not touch the bond");
+    assert_eq!(
+        f.vault.vault_of(&payer).bond,
+        500,
+        "top-up must not touch the bond"
+    );
 
     f.vault.withdraw(&payer, &1_200);
     assert_eq!(f.vault.vault_of(&payer).float, 1_800);
-    assert_eq!(f.vault.vault_of(&payer).bond, 500, "withdrawal must not touch the bond");
+    assert_eq!(
+        f.vault.vault_of(&payer).bond,
+        500,
+        "withdrawal must not touch the bond"
+    );
 }
 
 #[test]
@@ -389,7 +429,11 @@ fn a_second_device_can_sign_for_the_same_vault() {
         &sign(&f.env, &dev, &f.vault.signing_payload(&b)),
     );
 
-    assert_eq!(f.token.balance(&payee), 1_000, "both devices draw on one float");
+    assert_eq!(
+        f.token.balance(&payee),
+        1_000,
+        "both devices draw on one float"
+    );
 }
 
 #[test]
@@ -420,8 +464,14 @@ fn signing_payload_is_stable_and_domain_separated() {
     assert_eq!(f.vault.signing_payload(&a), f.vault.signing_payload(&a));
 
     // Any field change must change the payload.
-    let b = Authorization { nonce: 2, ..a.clone() };
+    let b = Authorization {
+        nonce: 2,
+        ..a.clone()
+    };
     assert_ne!(f.vault.signing_payload(&a), f.vault.signing_payload(&b));
-    let c = Authorization { amount: 1_001, ..a.clone() };
+    let c = Authorization {
+        amount: 1_001,
+        ..a.clone()
+    };
     assert_ne!(f.vault.signing_payload(&a), f.vault.signing_payload(&c));
 }

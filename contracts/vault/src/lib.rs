@@ -53,8 +53,8 @@
 //! this contract can avoid.
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, panic_with_error, token,
-    xdr::ToXdr, Address, Bytes, BytesN, Env,
+    contract, contracterror, contractimpl, contracttype, panic_with_error, token, xdr::ToXdr,
+    Address, Bytes, BytesN, Env,
 };
 
 /// Domain separator. Mixed into every signed payload so that a signature made for
@@ -163,10 +163,9 @@ impl Contract {
             &env.current_contract_address(),
             &(float + bond),
         );
-        env.storage().persistent().set(
-            &Key::Vault(payer.clone()),
-            &Vault { token, float, bond },
-        );
+        env.storage()
+            .persistent()
+            .set(&Key::Vault(payer.clone()), &Vault { token, float, bond });
     }
 
     /// Add more float to an existing vault.
@@ -182,7 +181,9 @@ impl Contract {
             &amount,
         );
         v.float += amount;
-        env.storage().persistent().set(&Key::Vault(payer.clone()), &v);
+        env.storage()
+            .persistent()
+            .set(&Key::Vault(payer.clone()), &v);
     }
 
     /// Register a device key that may sign authorizations offline.
@@ -305,7 +306,9 @@ impl Contract {
         }
         let payout = v.bond;
         v.bond = 0;
-        env.storage().persistent().set(&Key::Vault(a.payer.clone()), &v);
+        env.storage()
+            .persistent()
+            .set(&Key::Vault(a.payer.clone()), &v);
         env.storage()
             .persistent()
             .remove(&Key::Device(a.payer.clone(), device));
@@ -328,7 +331,9 @@ impl Contract {
             panic_with_error!(&env, Error::InsufficientFloat);
         }
         v.float -= amount;
-        env.storage().persistent().set(&Key::Vault(payer.clone()), &v);
+        env.storage()
+            .persistent()
+            .set(&Key::Vault(payer.clone()), &v);
         token::Client::new(&env, &v.token).transfer(
             &env.current_contract_address(),
             &payer,
@@ -344,7 +349,9 @@ impl Contract {
         payer.require_auth();
         let v = Self::vault(&env, &payer);
         let total = v.float + v.bond;
-        env.storage().persistent().remove(&Key::Vault(payer.clone()));
+        env.storage()
+            .persistent()
+            .remove(&Key::Vault(payer.clone()));
         if total > 0 {
             token::Client::new(&env, &v.token).transfer(
                 &env.current_contract_address(),

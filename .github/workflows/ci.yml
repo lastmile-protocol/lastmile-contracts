@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install the toolchain
+        run: |
+          rustup toolchain install stable --profile default --no-self-update
+          rustup target add wasm32v1-none
+
+      - name: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - run: cargo fmt --all -- --check
+
+      # ed25519-dalek 3.0.0 breaks soroban-env-host's test utilities, so the lock
+      # file pins 2.x. Fail loudly if something drags 3.x back in rather than
+      # letting the build break somewhere less obvious.
+      - name: the dalek pin still holds
+        run: |
+          if cargo tree -i ed25519-dalek@3.0.0 >/dev/null 2>&1; then
+            echo "ed25519-dalek 3.x is back in the graph; it breaks the test host"
+            exit 1
+          fi
+
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test --all
+
+      - name: the contract still builds for the chain it runs on
+        run: cargo build -p lastmile-vault --target wasm32v1-none --release
