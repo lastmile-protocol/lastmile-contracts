@@ -53,8 +53,8 @@
 //! this contract can avoid.
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, panic_with_error, token, xdr::ToXdr,
-    Address, Bytes, BytesN, Env,
+    contract, contracterror, contractevent, contractimpl, contracttype, panic_with_error, token,
+    xdr::ToXdr, Address, Bytes, BytesN, Env,
 };
 
 /// Domain separator. Mixed into every signed payload so that a signature made for
@@ -86,7 +86,8 @@ pub enum Error {
     NotADoubleSign = 9,
     /// The bond is already spent, or there was never one to slash.
     NoBond = 10,
-    /// A device key may only be registered once.
+    /// A device key may only be registered once, ever. A revoked key stays
+    /// revoked; re-registering it would undo the revocation.
     DeviceExists = 11,
 }
 
@@ -129,7 +130,13 @@ pub struct Vault {
 enum Key {
     /// Vault(payer) — the payer's float and bond.
     Vault(Address),
-    /// Device(payer, pubkey) — a registered offline signing key.
+    /// Device(payer, pubkey) — an offline signing key. The stored bool is the
+    /// key's *state*: `true` may still sign, `false` has been revoked.
+    ///
+    /// Revoking writes `false` rather than removing the entry, so the chain keeps
+    /// a record that this key was once this payer's. Two things depend on that:
+    /// a payer cannot revoke a device to escape a double-sign report, and nobody
+    /// can slash a payer for a key that was never theirs.
     Device(Address, BytesN<32>),
     /// Spent(payer, nonce) — the redeemed-nonce ledger, and the evidence store
     /// for double-sign proofs. Holds the hash of the authorization that claimed
@@ -140,6 +147,100 @@ enum Key {
 /// How long a redeemed nonce is remembered. A nonce must outlive every voucher
 /// that could carry it, or a replay becomes possible once the record expires.
 const SPENT_TTL: u32 = 3_110_400; // ~180 days of ledgers at 5s
+
+// ---- events ----
+//
+// Every state change publishes one. Without them a vault is a black box: nobody
+// can build a balance page, alert a payer that their float is nearly gone, or
+// notice a double-sign report except by polling storage key by key. Typed events
+// go into the contract spec, so an indexer can generate bindings rather than
+// guess at tuple positions.
+
+/// A vault was opened and funded.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Opened {
+    #[topic]
+    pub payer: Address,
+    pub token: Address,
+    pub float: i128,
+    pub bond: i128,
+}
+
+/// Float was added to a vault. `float` is the balance afterwards.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ToppedUp {
+    #[topic]
+    pub payer: Address,
+    pub amount: i128,
+    pub float: i128,
+}
+
+/// A device key may now sign offline for this payer.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DeviceAdded {
+    #[topic]
+    pub payer: Address,
+    pub device: BytesN<32>,
+}
+
+/// A device key may no longer sign. Vouchers it signed and nobody redeemed are
+/// now worthless, so a payee watching for this knows to stop waiting.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DeviceRevoked {
+    #[topic]
+    pub payer: Address,
+    pub device: BytesN<32>,
+}
+
+/// An offline authorization was settled on chain.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Redeemed {
+    #[topic]
+    pub payer: Address,
+    #[topic]
+    pub payee: Address,
+    pub amount: i128,
+    pub nonce: u64,
+    pub device: BytesN<32>,
+}
+
+/// A double-sign was proven and the bond paid to the reporter.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DoubleSigned {
+    #[topic]
+    pub payer: Address,
+    #[topic]
+    pub reporter: Address,
+    pub device: BytesN<32>,
+    pub nonce: u64,
+    pub payout: i128,
+}
+
+/// Float was withdrawn. `float` is the balance afterwards.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Withdrawn {
+    #[topic]
+    pub payer: Address,
+    pub amount: i128,
+    pub float: i128,
+}
+
+/// The vault is gone and everything left in it returned.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Closed {
+    #[topic]
+    pub payer: Address,
+    pub float: i128,
+    pub bond: i128,
+}
 
 #[contract]
 pub struct Contract;
@@ -163,9 +264,21 @@ impl Contract {
             env.current_contract_address(),
             &(float + bond),
         );
-        env.storage()
-            .persistent()
-            .set(&Key::Vault(payer.clone()), &Vault { token, float, bond });
+        env.storage().persistent().set(
+            &Key::Vault(payer.clone()),
+            &Vault {
+                token: token.clone(),
+                float,
+                bond,
+            },
+        );
+        Opened {
+            payer,
+            token,
+            float,
+            bond,
+        }
+        .publish(&env);
     }
 
     /// Add more float to an existing vault.
@@ -184,6 +297,12 @@ impl Contract {
         env.storage()
             .persistent()
             .set(&Key::Vault(payer.clone()), &v);
+        ToppedUp {
+            payer,
+            amount,
+            float: v.float,
+        }
+        .publish(&env);
     }
 
     /// Register a device key that may sign authorizations offline.
@@ -191,24 +310,42 @@ impl Contract {
     /// This is not the payer's Stellar account key. It belongs to the phone or
     /// card that goes out of signal, so losing the device means revoking a key
     /// rather than losing an account.
+    ///
+    /// A key can be registered once and only once. Once revoked it is finished:
+    /// re-adding it would let a payer un-revoke the key on a phone they had
+    /// already reported stolen, and would erase the record a double-sign report
+    /// depends on. A replacement phone gets a new key, which costs nothing.
     pub fn add_device(env: Env, payer: Address, device: BytesN<32>) {
         payer.require_auth();
         Self::vault(&env, &payer);
-        let k = Key::Device(payer.clone(), device);
+        let k = Key::Device(payer.clone(), device.clone());
         if env.storage().persistent().has(&k) {
             panic_with_error!(&env, Error::DeviceExists);
         }
         env.storage().persistent().set(&k, &true);
+        env.storage()
+            .persistent()
+            .extend_ttl(&k, SPENT_TTL, SPENT_TTL);
+        DeviceAdded { payer, device }.publish(&env);
     }
 
     /// Revoke a device key. Vouchers it already signed but nobody has redeemed
     /// become worthless, which is the point: this is what you call when a phone
     /// is stolen.
+    ///
+    /// The key is marked revoked, not forgotten. A payer who could erase a device
+    /// could sign two vouchers on one nonce, revoke the key, and walk away from
+    /// the proof; leaving the record behind closes that.
     pub fn revoke_device(env: Env, payer: Address, device: BytesN<32>) {
         payer.require_auth();
-        env.storage()
-            .persistent()
-            .remove(&Key::Device(payer.clone(), device));
+        let k = Key::Device(payer.clone(), device.clone());
+        if env.storage().persistent().has(&k) {
+            env.storage().persistent().set(&k, &false);
+            env.storage()
+                .persistent()
+                .extend_ttl(&k, SPENT_TTL, SPENT_TTL);
+        }
+        DeviceRevoked { payer, device }.publish(&env);
     }
 
     /// The exact bytes a device must sign for `auth`.
@@ -233,11 +370,7 @@ impl Contract {
         if env.ledger().timestamp() > auth.expires {
             panic_with_error!(&env, Error::Expired);
         }
-        if !env
-            .storage()
-            .persistent()
-            .has(&Key::Device(auth.payer.clone(), device.clone()))
-        {
+        if !Self::device_active(&env, &auth.payer, &device) {
             panic_with_error!(&env, Error::UnknownDevice);
         }
 
@@ -270,6 +403,14 @@ impl Contract {
             &auth.payee,
             &auth.amount,
         );
+        Redeemed {
+            payer: auth.payer,
+            payee: auth.payee,
+            amount: auth.amount,
+            nonce: auth.nonce,
+            device,
+        }
+        .publish(&env);
     }
 
     /// Prove that a device signed two different authorizations under one nonce,
@@ -279,6 +420,12 @@ impl Contract {
     /// signatures over different payloads sharing a nonce is a signed confession,
     /// and anyone holding both can submit it — typically the payee who was left
     /// unpaid when the other voucher got there first.
+    ///
+    /// The confession has to be the payer's own. `device` must be a key the payer
+    /// registered — currently or before revocation — because otherwise anyone
+    /// could generate a fresh keypair, sign two conflicting vouchers naming a
+    /// stranger as payer, and claim that stranger's bond. The signatures would
+    /// verify perfectly; they would just be the attacker's own.
     pub fn report_double_sign(
         env: Env,
         device: BytesN<32>,
@@ -291,6 +438,14 @@ impl Contract {
         if a.payer != b.payer || a.nonce != b.nonce {
             panic_with_error!(&env, Error::NotADoubleSign);
         }
+        // The key must be one this payer put their name to. Without this the
+        // signatures below prove only that *somebody* signed twice, which any
+        // attacker can arrange with a keypair they generate themselves.
+        let dev_key = Key::Device(a.payer.clone(), device.clone());
+        if !env.storage().persistent().has(&dev_key) {
+            panic_with_error!(&env, Error::UnknownDevice);
+        }
+
         let pa = Self::payload(&env, &a);
         let pb = Self::payload(&env, &b);
         if pa == pb {
@@ -309,15 +464,25 @@ impl Contract {
         env.storage()
             .persistent()
             .set(&Key::Vault(a.payer.clone()), &v);
+        // Mark revoked rather than forget, for the same reason revoke_device does.
+        env.storage().persistent().set(&dev_key, &false);
         env.storage()
             .persistent()
-            .remove(&Key::Device(a.payer.clone(), device));
+            .extend_ttl(&dev_key, SPENT_TTL, SPENT_TTL);
 
         token::Client::new(&env, &v.token).transfer(
             &env.current_contract_address(),
             &reporter,
             &payout,
         );
+        DoubleSigned {
+            payer: a.payer,
+            reporter,
+            device,
+            nonce: a.nonce,
+            payout,
+        }
+        .publish(&env);
     }
 
     /// Withdraw unspent float. The bond stays until `close`.
@@ -339,6 +504,12 @@ impl Contract {
             &payer,
             &amount,
         );
+        Withdrawn {
+            payer,
+            amount,
+            float: v.float,
+        }
+        .publish(&env);
     }
 
     /// Close the vault, returning whatever float and bond remain.
@@ -359,6 +530,12 @@ impl Contract {
                 &total,
             );
         }
+        Closed {
+            payer,
+            float: v.float,
+            bond: v.bond,
+        }
+        .publish(&env);
     }
 
     // ---- reads: free, simulated, no wallet needed ----
@@ -373,8 +550,15 @@ impl Contract {
         env.storage().persistent().has(&Key::Spent(payer, nonce))
     }
 
-    /// Whether a device key may currently sign for this payer.
+    /// Whether a device key may currently sign for this payer. A revoked key is
+    /// still on record but answers `false` here.
     pub fn is_device(env: Env, payer: Address, device: BytesN<32>) -> bool {
+        Self::device_active(&env, &payer, &device)
+    }
+
+    /// Whether a device key was ever this payer's, revoked or not. This is the
+    /// question `report_double_sign` asks.
+    pub fn was_device(env: Env, payer: Address, device: BytesN<32>) -> bool {
         env.storage().persistent().has(&Key::Device(payer, device))
     }
 
@@ -393,11 +577,7 @@ impl Contract {
         if auth.amount <= 0 || env.ledger().timestamp() > auth.expires {
             return false;
         }
-        if !env
-            .storage()
-            .persistent()
-            .has(&Key::Device(auth.payer.clone(), device.clone()))
-        {
+        if !Self::device_active(&env, &auth.payer, &device) {
             return false;
         }
         if env
@@ -429,6 +609,14 @@ impl Contract {
             .persistent()
             .get(&Key::Vault(payer.clone()))
             .unwrap_or_else(|| panic_with_error!(env, Error::NoVault))
+    }
+
+    /// `true` only for a key that is registered and not revoked.
+    fn device_active(env: &Env, payer: &Address, device: &BytesN<32>) -> bool {
+        env.storage()
+            .persistent()
+            .get::<Key, bool>(&Key::Device(payer.clone(), device.clone()))
+            .unwrap_or(false)
     }
 
     fn payload(env: &Env, auth: &Authorization) -> BytesN<32> {

@@ -38,7 +38,7 @@
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
                 },
                 {
-                  "i128": "11000"
+                  "i128": "25000"
                 }
               ]
             }
@@ -63,10 +63,10 @@
                   "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
                 },
                 {
-                  "i128": "1000"
+                  "i128": "10000"
                 },
                 {
-                  "i128": "0"
+                  "i128": "5000"
                 }
               ]
             }
@@ -85,7 +85,7 @@
                       "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
                     },
                     {
-                      "i128": "1000"
+                      "i128": "15000"
                     }
                   ]
                 }
@@ -118,6 +118,9 @@
         }
       ]
     ],
+    [],
+    [],
+    [],
     [],
     []
   ],
@@ -318,7 +321,7 @@
                         "symbol": "bond"
                       },
                       "val": {
-                        "i128": "0"
+                        "i128": "5000"
                       }
                     },
                     {
@@ -326,7 +329,7 @@
                         "symbol": "float"
                       },
                       "val": {
-                        "i128": "1000"
+                        "i128": "10000"
                       }
                     },
                     {
@@ -486,7 +489,7 @@
                         "symbol": "amount"
                       },
                       "val": {
-                        "i128": "1000"
+                        "i128": "15000"
                       }
                     },
                     {
