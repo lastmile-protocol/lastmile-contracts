@@ -160,7 +160,7 @@ impl Contract {
         }
         token::Client::new(&env, &token).transfer(
             &payer,
-            &env.current_contract_address(),
+            env.current_contract_address(),
             &(float + bond),
         );
         env.storage()
@@ -177,7 +177,7 @@ impl Contract {
         let mut v = Self::vault(&env, &payer);
         token::Client::new(&env, &v.token).transfer(
             &payer,
-            &env.current_contract_address(),
+            env.current_contract_address(),
             &amount,
         );
         v.float += amount;
